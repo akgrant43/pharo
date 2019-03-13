@@ -48,6 +48,12 @@ TextDoIt >> info [
 	^ evalString
 ]
 
+{ #category : #evaluating }
+TextDoIt >> rubActOnClick: anEvent for: anObject in: paragraph editor: editor [
+
+	^self actOnClick: anEvent for: anObject in: paragraph editor: editor.
+]
+
 { #category : #styling }
 TextDoIt >> writeScanOn: strm [
 

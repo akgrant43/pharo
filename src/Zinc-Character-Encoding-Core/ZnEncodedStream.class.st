@@ -33,6 +33,13 @@ ZnEncodedStream class >> on: wrappedStream encoding: encoding [
 		yourself
 ]
 
+{ #category : #accessing }
+ZnEncodedStream >> asNewLineStream [
+	"Answer the receiver wrapped with a ZnNewLineWriterStream"
+	
+	^ZnNewLineWriterStream on: self
+]
+
 { #category : #'initialize-release' }
 ZnEncodedStream >> close [
 	stream close

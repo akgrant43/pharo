@@ -36,6 +36,13 @@ ZnNewLineWriterStream class >> on: aStream [
 		yourself
 ]
 
+{ #category : #accessing }
+ZnNewLineWriterStream >> asNewLineStream [
+	"Answer the receiver wrapped with a ZnNewLineWriterStream"
+	
+	^self
+]
+
 { #category : #'open/close' }
 ZnNewLineWriterStream >> close [ 
 
