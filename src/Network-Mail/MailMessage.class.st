@@ -64,6 +64,13 @@ MailMessage class >> fromRfc822: aString [
 	^ self new fromRfc822: aString
 ]
 
+{ #category : #'instance creation' }
+MailMessage class >> fromRfc822: aString headersOnly: aBoolean [
+	"Initialize a new instance from the given string."
+
+	^ self new fromRfc822: aString headersOnly: aBoolean
+]
+
 { #category : #utilities }
 MailMessage class >> generateSeparator [
 	"generate a separator usable for making MIME multipart documents.  A leading -- will *not* be included"
@@ -394,6 +401,29 @@ MailMessage >> date: aDate [
 	self setField: 'date' toString: aDate
 ]
 
+{ #category : #parsing }
+MailMessage >> decodeEncodedWord: aString [
+	"Check if the supplied string is a MIME encoded-word string, and if so, decode it.
+	Otherwise return the supplied string
+	See https://en.wikipedia.org/wiki/MIME#Encoded-Word"
+
+	| regex stringEncoding string encoder |
+
+	regex := '\=\?(iso-8859-.|utf-8)\?([QB])\?(.*)\?=' asRegex.
+	(regex matches: aString) ifFalse: [ ^aString ].
+	encoder := (regex subexpression: 2) = 'utf-8'
+		ifTrue: [ ZnCharacterEncoder utf8 ]
+		ifFalse: [ ZnCharacterEncoder iso88591 ].
+	stringEncoding := regex subexpression: 3.
+	string := regex subexpression: 4.
+	^[ string := (stringEncoding = 'Q') 
+			ifTrue: [string decodeQuotedPrintable]
+			ifFalse: [string base64Decoded].
+	 encoder decodeBytes: string asByteArray ]
+		on: Error 
+		do: [ aString ]
+]
+
 { #category : #multipart }
 MailMessage >> decoderClass [
 	| encoding |
@@ -525,7 +555,51 @@ MailMessage >> fromRfc822: aString [
 	contentTransferEncoding = 'base64' ifTrue: 
 		[ bodyText := Base64MimeConverter mimeDecodeToChars: bodyText readStream.
 		bodyText := bodyText contents ].
-	contentTransferEncoding = 'quoted-printable' ifTrue: [ bodyText := bodyText decodeQuotedPrintable ].
+	contentTransferEncoding = 'quoted-printable' ifTrue: 
+		[ bodyText := [ bodyText decodeQuotedPrintable ]
+			on: Error 
+			do: [ bodyText ] ].
+	body := MIMEDocument 
+		contentType: contentType
+		content: bodyText
+]
+
+{ #category : #initialization }
+MailMessage >> fromRfc822: aString headersOnly: aBoolean [
+	"Parse aString to initialize myself.
+	If aBoolean is true, don't load the message body"
+	| parseStream contentType bodyText contentTransferEncoding |
+	text := aString trimRight, String cr.
+	parseStream := text readStream.
+	contentType := 'text/plain'.
+	contentTransferEncoding := nil.
+	fields := Dictionary new.
+
+	"Extract information out of the header fields"
+	self 
+		fieldsFrom: parseStream
+		do: 
+			[ :fName :fValue | 
+			"NB: fName is all lowercase"
+			fName = 'content-type' ifTrue: [ contentType := (fValue copyUpTo: $;) asLowercase ].
+			fName = 'content-transfer-encoding' ifTrue: [ contentTransferEncoding := fValue asLowercase ].
+			(fields 
+				at: fName
+				ifAbsentPut: [ OrderedCollection new: 1 ]) add: (MIMEHeaderValue 
+					forField: fName
+					fromString: fValue) ].
+
+	aBoolean ifTrue: [ ^self ].
+
+	"Extract the body of the message"
+	bodyText := parseStream upToEnd.
+	contentTransferEncoding = 'base64' ifTrue: 
+		[ bodyText := Base64MimeConverter mimeDecodeToChars: bodyText readStream.
+		bodyText := bodyText contents ].
+	contentTransferEncoding = 'quoted-printable' ifTrue: 
+		[ bodyText := [ bodyText decodeQuotedPrintable ]
+			on: Error 
+			do: [ bodyText ] ].
 	body := MIMEDocument 
 		contentType: contentType
 		content: bodyText
@@ -542,6 +616,12 @@ MailMessage >> headerFieldsNamed: fieldName do: aBlock [
 	self 
 		fieldsFrom: text readStream
 		do: [ :fName :fValue | (fieldName sameAs: fName) ifTrue: [ aBlock value: fValue ] ]
+]
+
+{ #category : #accessing }
+MailMessage >> inReplyTo [
+
+	^(self fieldNamed: 'in-reply-to' ifAbsent: [ ^'none' ]) mainValue
 ]
 
 { #category : #initialization }
@@ -665,7 +745,7 @@ MailMessage >> parseParts [
 	[ parseStream atEnd ] whileFalse: 
 		[ messages add: msgStream upToEnd.
 		msgStream skipThisLine ].
-	parts := messages collect: [ :e | MailMessage from: e ]
+	parts := messages collect: [ :e | self class fromRfc822: e ]
 ]
 
 { #category : #multipart }
@@ -847,7 +927,7 @@ MailMessage >> skipWeekdayName: aStream [
 { #category : #accessing }
 MailMessage >> subject [
 
-		^(self fieldNamed: 'subject' ifAbsent: [ ^'' ])  mainValue
+		^self decodeEncodedWord: ((self fieldNamed: 'subject' ifAbsent: [ ^'' ]) mainValue)
 ]
 
 { #category : #'fields-convenience' }
@@ -904,6 +984,41 @@ MailMessage >> timeFrom: aString [
 	"MailMessage new timeFrom: 'Thu, 22 Jun 2000 14:17:47 -500'"
 	"MailMessage new timeFrom: 'Thu, 22 Jun 2000 14:17:47 --500'"
 	"MailMessage new timeFrom: 'on, 04 apr 2001 14:57:32'"
+]
+
+{ #category : #accessing }
+MailMessage >> timestamp [
+	"Answer a DateAndTime for the receiver"
+
+	| regex dateStrings dateString date time offsetString offset minutes |
+
+	dateStrings := self fieldsNamed: 'date' ifAbsent: [ self halt: 'No date found'. ^nil ].
+	self assert: dateStrings size = 1.
+	dateString := dateStrings first mainValue.
+	regex := '(\d\d? \w\w\w \d\d\d\d) (\d\d\:\d\d\:\d\d)\s?([-+]\d\d\d\d|GMT)?' asRegex.
+	(regex search: dateString) ifFalse: [ self error: 'Unable to parse date' ].
+	date := Date readFrom: (regex subexpression: 2) readStream.
+	time := Time readFrom: (regex subexpression: 3) readStream.
+	offsetString := regex subexpression: 4.
+	
+	minutes := (offsetString isNil or: [ offsetString = 'GMT']) ifTrue:
+		[ 0 ]
+	ifFalse:
+		[ ((((offsetString second codePoint - 16r30) * 10) +
+			(offsetString third codePoint - 16r30)) * 60 +
+			(((offsetString fourth codePoint - 16r30) * 10) +
+			(offsetString fifth codePoint - 16r30))) *
+			(offsetString first = $- ifTrue: [ -1 ] ifFalse: [ 1 ]) ].
+	offset := Duration minutes: minutes. 
+ 	^DateAndTime
+		year: date year
+		month: date monthName
+		day: date dayOfMonth
+		hour: time hour
+		minute: time minute 
+		second: time second 
+		nanoSecond: 0
+		offset: offset.
 ]
 
 { #category : #accessing }
