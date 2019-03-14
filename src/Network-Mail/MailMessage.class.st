@@ -549,7 +549,7 @@ MailMessage >> fromRfc822: aString headersOnly: aBoolean [
 		do: 
 			[ :fName :fValue | 
 			"NB: fName is all lowercase"
-			fName = #'content-type' ifTrue: [ contentType := (fValue copyUpTo: $;) asLowercase ].
+			fName = #'content-type' ifTrue: [ contentType := fValue asLowercase ].
 			fName = #'content-transfer-encoding' ifTrue: [ contentTransferEncoding := fValue asLowercase ].
 			(fields 
 				at: fName
@@ -569,7 +569,7 @@ MailMessage >> fromRfc822: aString headersOnly: aBoolean [
 			on: Error 
 			do: [ bodyText ] ].
 	body := MIMEDocument 
-		contentType: (fields at: #'content-type') first asHeaderValue
+		contentType: contentType
 		content: bodyText
 ]
 
