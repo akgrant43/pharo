@@ -58,17 +58,17 @@ MailMessage class >> from: senderString to: recipients about: subjectString asFo
 ]
 
 { #category : #'instance creation' }
-MailMessage class >> fromRfc822: aString [
-	"Initialize a new instance from the given string."
+MailMessage class >> fromRfc822: aStringOrStream [
+	"Initialize a new instance from the given string / stream."
 
-	^ self new fromRfc822: aString
+	^ self new fromRfc822: aStringOrStream
 ]
 
 { #category : #'instance creation' }
-MailMessage class >> fromRfc822: aString headersOnly: aBoolean [
-	"Initialize a new instance from the given string."
+MailMessage class >> fromRfc822: aStringOrStream headersOnly: aBoolean [
+	"Initialize a new instance from the given string / stream."
 
-	^ self new fromRfc822: aString headersOnly: aBoolean
+	^ self new fromRfc822: aStringOrStream headersOnly: aBoolean
 ]
 
 { #category : #utilities }
@@ -527,18 +527,20 @@ MailMessage >> from: senderString [
 ]
 
 { #category : #initialization }
-MailMessage >> fromRfc822: aString [ 
+MailMessage >> fromRfc822: aStringOrStream [
 	
-		^self fromRfc822: aString headersOnly: false
+	^self fromRfc822: aStringOrStream headersOnly: false
 ]
 
 { #category : #initialization }
-MailMessage >> fromRfc822: aString headersOnly: aBoolean [
+MailMessage >> fromRfc822: aStringOrStream headersOnly: aBoolean [
 	"Parse aString to initialize myself.
 	If aBoolean is true, don't load the message body"
 	| parseStream contentType bodyText contentTransferEncoding |
-	text := aString trimRight, String cr.
-	parseStream := text readStream.
+
+	parseStream := aStringOrStream isStream 
+		ifTrue: [ aStringOrStream ]
+		ifFalse: [ aStringOrStream readStream ].
 	contentType := 'text/plain'.
 	contentTransferEncoding := nil.
 	fields := Dictionary new.
