@@ -960,7 +960,7 @@ MailMessage >> timestamp [
 
 	| regex dateStrings dateString date time offsetString offset minutes |
 
-	dateStrings := self fieldsNamed: 'date' ifAbsent: [ self halt: 'No date found'. ^nil ].
+	dateStrings := self fieldsNamed: 'date' ifAbsent: [ ^nil ].
 	self assert: dateStrings size = 1.
 	dateString := dateStrings first mainValue.
 	regex := '(\d\d? \w\w\w \d\d\d\d) (\d\d\:\d\d\:\d\d)\s?([-+]\d\d\d\d|GMT)?' asRegex.
