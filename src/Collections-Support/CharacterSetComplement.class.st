@@ -84,6 +84,25 @@ CharacterSetComplement >> findFirstInByteString: aByteString startingAt: startIn
 		startingAt: startIndex
 ]
 
+{ #category : #printing }
+CharacterSetComplement >> gtInspectorItemsIn: composite [
+	"It's not practical to browse the complement as the size is very large and not really known.  Just look at the Absent list"
+
+	^ (composite fastList)
+		title: 'Absent';
+		display: [ absent asArray ];
+		beMultiple;
+		format: [ :each | GTObjectPrinter asTruncatedTextFrom: each ];
+		send: [ :result | result isNil 
+			ifTrue:[nil]
+			ifFalse:[ (result size = 1) 
+				ifTrue: [result anyOne] 
+				ifFalse: [self species withAll: result]]]
+		"withSmalltalkSearch;	
+		showOnly: 50;
+		helpMessage: 'Quick selection field. Given your INPUT, it executes: self select: [:each | INPUT ]'."
+]
+
 { #category : #testing }
 CharacterSetComplement >> hasWideCharacters [
 	"This is a guess that absent is not holding each and every possible wideCharacter..."
