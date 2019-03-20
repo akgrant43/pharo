@@ -67,6 +67,31 @@ MailAddressTokenizer >> atEndOfChars [
 	^pos > text size
 ]
 
+{ #category : #tokenizing }
+MailAddressTokenizer >> indexOfNextNonAtomIn: aString startingAt: startIndex ifAbsent: absentBlock [
+	"Answer the index of the next non-atom character after startIndex in aString.
+	If not found, answer absentBlock value"
+
+	| index indexChar stringSize |
+
+	stringSize := aString size.
+	"First try the primitive (which only handles code points < 256)"
+	index := aString indexOfAnyOf: CSNonAtom startingAt: startIndex ifAbsent: absentBlock.
+	(index > stringSize or: [ (aString at: index) codePoint < 256 ]) ifTrue: 
+		[ ^index ].
+
+	"#indexOfAnyOf:startingAt:ifAbsent: has stopped at a character with a code point above 255.
+	Manually step forward until we find a non-atom character or the end of the string"
+	indexChar := aString at: index.
+	[ index <= stringSize and: 
+		[ (CSNonAtom includes: indexChar) not or: 
+		[ indexChar codePoint > 255 ] ] ] whileTrue:
+			[ index := index + 1.
+			index <= stringSize ifTrue:
+				[ indexChar := aString at: index ] ].
+	^index
+]
+
 { #category : #initialization }
 MailAddressTokenizer >> initialize: aString [
 	text := aString.
@@ -86,7 +111,7 @@ MailAddressTokenizer >> next [
 MailAddressTokenizer >> nextAtom [
 	| start end |
 	start := pos.
-	pos := text indexOfAnyOf: CSNonAtom startingAt: start ifAbsent: [ text size + 1].
+	pos := self indexOfNextNonAtomIn: text startingAt: start ifAbsent: [ text size + 1].
 	end := pos - 1.
 	^MailAddressToken
 		type: #Atom
