@@ -84,6 +84,29 @@ CharacterSetComplement >> findFirstInByteString: aByteString startingAt: startIn
 		startingAt: startIndex
 ]
 
+{ #category : #'gt-inspector-extension' }
+CharacterSetComplement >> gtInspectorItemsIn: composite [
+
+	^ (composite fastList)
+		title: 'Absent';
+		display: [ 
+			"The FastTable renderer needs to access elements by index so we transform
+			the collection to an OrderedCollection. Subclasses can override the #display
+			block to provide a different behaviour. The previous renderer had this behaviour
+			implemented in the renderer."
+			absent asArray ];
+		beMultiple;	
+		format: [ :each | GTObjectPrinter asTruncatedTextFrom: each ];
+		send: [ :result | result isNil 
+			ifTrue:[nil]
+			ifFalse:[ (result size = 1) 
+				ifTrue: [result anyOne] 
+				ifFalse: [self species withAll: result]]]
+		"withSmalltalkSearch;	
+		showOnly: 50;
+		helpMessage: 'Quick selection field. Given your INPUT, it executes: self select: [:each | INPUT ]'."
+]
+
 { #category : #testing }
 CharacterSetComplement >> hasWideCharacters [
 	"This is a guess that absent is not holding each and every possible wideCharacter..."

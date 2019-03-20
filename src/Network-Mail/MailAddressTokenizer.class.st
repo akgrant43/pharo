@@ -83,8 +83,11 @@ MailAddressTokenizer >> next [
 MailAddressTokenizer >> nextAtom [
 	| start end |
 	start := pos.
-	pos := text indexOfAnyOf: CSNonAtom startingAt: start ifAbsent: [ text size + 1].
-	end := pos - 1.
+	pos := text indexOfAnyOf: CSNonAtom startingAt: start ifAbsent: [ text size ].
+	"Hack Hypothesis: seems to go one too far on specials"
+	(CSSpecials includes: (text at: pos)) ifTrue: [ pos := pos - 1 ].
+	end := pos.
+	pos := pos + 1.
 	^MailAddressToken
 		type: #Atom
 		text: (text copyFrom: start to: end)
@@ -162,6 +165,7 @@ MailAddressTokenizer >> nextSpecial [
 { #category : #tokenizing }
 MailAddressTokenizer >> nextToken [
 	| c |
+	pos > text size ifTrue: [ ^nil ].
 	self skipSeparators.
 	c := self peekChar.
 	c ifNil: [ ^nil ].
@@ -186,5 +190,5 @@ MailAddressTokenizer >> peekChar [
 
 { #category : #tokenizing }
 MailAddressTokenizer >> skipSeparators [
-	pos := text indexOfAnyOf: CSNonSeparators  startingAt: pos  ifAbsent: [ text size + 1 ].
+	pos := text indexOfAnyOf: CSNonSeparators  startingAt: pos  ifAbsent: [ text size ].
 ]
