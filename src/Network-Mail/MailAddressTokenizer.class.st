@@ -23,7 +23,7 @@ MailAddressTokenizer class >> forString: aString [
 	^self basicNew initialize: aString
 ]
 
-{ #category : #initialization }
+{ #category : #'class initialization' }
 MailAddressTokenizer class >> initialize [
 	"Initalize class variables using   MailAddressTokenizer initialize"
 
@@ -44,6 +44,9 @@ MailAddressTokenizer class >> initialize [
 	atomChars addAll: ($a to: $z).
 	atomChars addAll: ($0 to: $9).
 	atomChars addAll: '!#$%&''*+-/=?^_`{|}~'.
+	"RFC 6531 allows characters with value > 127 encoded as UTF-8, which means values between 128 and 255 may appear as part of atoms."
+	atomChars addAll: ((Character value: 128) to: (Character value: 255)).
+	
 
 	CSNonAtom :=  atomChars complement.
 ]
