@@ -6,6 +6,7 @@ Class {
 
 { #category : #tests }
 MailAddressTokenizerTest >> testTokensInAscii [
+	"Basic test that the tokenizer returns the correct values"
 
 	| tokens tokensCollection |
 
@@ -19,6 +20,8 @@ MailAddressTokenizerTest >> testTokensInAscii [
 
 { #category : #tests }
 MailAddressTokenizerTest >> testTokensInLatin [
+	"RFC6531 (February 2012) allows character values > 127.
+	Check that the parser handles values between 128 and 255 (which can be correctly represented with single byte encoding)"
 
 	| email tokens tokensCollection |
 
@@ -49,6 +52,8 @@ MailAddressTokenizerTest >> testTokensInLatin [
 
 { #category : #tests }
 MailAddressTokenizerTest >> testTokensInUnicode [
+	"RFC6531 (February 2012) allows character values > 127.
+	Check that the parser handles values greater than 255 (which require multi-byte encoding)"
 
 	| email tokens tokensCollection |
 
